@@ -6,8 +6,6 @@ import torch
 from VGGnet import VGG
 from loader import file_loader
 
-device = torch.device("cuda" if (torch.cuda.is_available()) else 'cpu')
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset1', type=str)
 parser.add_argument('--dataset2', type=str)
@@ -23,8 +21,6 @@ class Compare():
         self.num_images = num_images
 
         self.model = VGG()
-        with torch.no_grad():
-            self.model.to(device).eval()
 
         self.feats1, self.feats2 = self._get_features()
 
@@ -36,7 +32,7 @@ class Compare():
         if self.num_images != None:
             num_images = self.num_images
 
-        return self.model.get_features(self.dataset1, self.dataset2, num_images=num_images, device=device)
+        return self.model.get_features(self.dataset1, self.dataset2, num_images)
 
     def calc_style_distance(self):
         distances = 0
