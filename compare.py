@@ -1,54 +1,26 @@
 import os
 import argparse
 import math
-from tqdm import tqdm
-
 import torch
-import torchvision.transforms as transforms
-from PIL import Image
-import numpy as np
 
 from VGGnet import VGG
-from style_distance import calc_style_distance
+from loader import file_loader
 
 device = torch.device("cuda" if (torch.cuda.is_available()) else 'cpu')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset1', type=str)
 parser.add_argument('--dataset2', type=str)
-
-def image_loader(path):
-    image = Image.open(path)
-
-    loader = transforms.Compose([
-        transforms.Resize((512, 512)),
-        transforms.ToTensor(),
-    ])
-
-    image = loader(image).unsqueeze(0)
-    return image.to(device, torch.float)
-
-def is_image_file(name):
-    if name.endswith('.jpg') or name.endswith('.png'):
-        return True
-    else:
-        return False
-
-def file_loader(path):
-    imgs = []
-    for root, dirs, fnames in sorted(os.walk(path, followlinks=True)):
-        for fname in fnames:
-            if is_image_file(fname):
-                path = os.path.join(root, fname)
-                imgs.append(path)
-    return imgs
+parser.add_argument('--num_images', type=int, default=None)
 
 class Compare():
-    def __init__(self, dataset1, dataset2):
+    def __init__(self, dataset1, dataset2, num_images):
         self.freq = 100
 
         self.dataset1 = file_loader(dataset1)
         self.dataset2 = file_loader(dataset2)
+
+        self.num_images = num_images
 
         self.model = VGG()
         with torch.no_grad():
@@ -57,41 +29,35 @@ class Compare():
         self.feats1, self.feats2 = self._get_features()
 
     def _get_features(self):
-        length = len(self.dataset1)
+         
+        num_images = len(self.dataset1)
         if len(self.dataset1) > len(self.dataset2):
-            length = len(self.dataset2)
+            num_images = len(self.dataset2)
+        if self.num_images != None:
+            num_images = self.num_images
 
-        feats1 = [0] * 5
-        feats2 = [0] * 5
-        for i in tqdm(range(length)):
-            with torch.no_grad():
-                img1 = image_loader(self.dataset1[i])
-                img2 = image_loader(self.dataset2[i])
-                img1_feats = self.model(img1)
-                img2_feats = self.model(img2)
+        return self.model.get_features(self.dataset1, self.dataset2, num_images=num_images, device=device)
 
-                if i == 0:
-                    feats1 = [a for a in img1_feats]
-                    feats2 = [a for a in img2_feats]
-                else:
-                    feats1 = [a + b for a, b in zip(feats1, img1_feats)]
-                    feats2 = [a + b for a, b in zip(feats2, img2_feats)]
-        
-        feats1_mean = [a / length for a in feats1]
-        feats2_mean = [a / length for a in feats2]
-        return feats1_mean, feats2_mean
-
-    def get_distance(self):
-        distance = 0
+    def calc_style_distance(self):
+        distances = 0
         for feat1, feat2 in zip(self.feats1, self.feats2):
-            distance += calc_style_distance(feat1, feat2)
+            batch_size, channel, height, width = feat1.shape
+
+            feat1_shaped = feat1.view(channel, height * width)
+            feat2_shaped = feat2.view(channel, height * width)
+
+            G = torch.mm(feat1_shaped, feat1_shaped.t())
+            A = torch.mm(feat2_shaped, feat2_shaped.t())
+
+            distance = torch.mean((G-A) ** 2)
+            distances += distance
         
-        distance_neat = math.sqrt(distance.item())
+        distance_neat = math.sqrt(distances.item())
         
         return distance_neat
 
 if __name__ == "__main__":
     opt = parser.parse_args()
 
-    compare = Compare(opt.dataset1, opt.dataset2)
-    print(compare.get_distance())
+    compare = Compare(opt.dataset1, opt.dataset2, opt.num_images)
+    print(compare.calc_style_distance())
