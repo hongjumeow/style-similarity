@@ -27,9 +27,7 @@ class VGG(nn.Module):
 
         return features
     
-    def get_features(self, dataset1, dataset2, num_images):
-        num_images = num_images
-        
+    def get_features(self, dataset1, dataset2, num_images):        
         feats1 = [0] * 5
         feats2 = [0] * 5
         for i in tqdm(range(num_images)):

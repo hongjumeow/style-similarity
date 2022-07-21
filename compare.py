@@ -18,21 +18,19 @@ class Compare():
         self.dataset1 = file_loader(dataset1)
         self.dataset2 = file_loader(dataset2)
 
-        self.num_images = num_images
+        if num_images != None::
+            self.num_images = num_images
+        else:
+            num_images = len(dataset1)
+            if len(dataset1) > len(dataset2):
+                num_images = len(dataset2)
 
         self.model = VGG()
 
         self.feats1, self.feats2 = self._get_features()
 
     def _get_features(self):
-         
-        num_images = len(self.dataset1)
-        if len(self.dataset1) > len(self.dataset2):
-            num_images = len(self.dataset2)
-        if self.num_images != None:
-            num_images = self.num_images
-
-        return self.model.get_features(self.dataset1, self.dataset2, num_images)
+        return self.model.get_features(self.dataset1, self.dataset2, self.num_images)
 
     def calc_style_distance(self):
         distances = 0
