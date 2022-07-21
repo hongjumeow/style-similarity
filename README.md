@@ -22,6 +22,6 @@ distance = torch.mean((G-A) ** 2)
 ### How to Run Code
 
 ``` 
-$ python compare.py --dataset1 [path_to_dataset1] --dataset2 [path_to_dataset2]
+$ python compare.py --dataset1 [path_to_dataset1] --dataset2 [path_to_dataset2] --num_images (optional)[images_amount_to_compare]
 ```
 
